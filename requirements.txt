@@ -6,3 +6,4 @@ InquirerPy
 jinja2
 scipy
 flask
+gunicorn

@@ -34,7 +34,7 @@ except ImportError as e:
 
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 
 UPLOAD_DIR = Path(tempfile.mkdtemp())
 REPORT_DIR = Path(tempfile.mkdtemp())
