@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Pipeline</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1e272e;
+      color: #dfe6e9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #2d3436;
+      border-radius: 12px;
+      padding: 40px 48px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #b2bec3;
+      font-size: 0.92rem;
+      margin-bottom: 32px;
+    }
+
+    .drop-zone {
+      border: 2px dashed #636e72;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: #0984e3;
+      background: rgba(9, 132, 227, 0.06);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon {
+      font-size: 2.4rem;
+      margin-bottom: 12px;
+    }
+
+    .drop-label {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #dfe6e9;
+      margin-bottom: 6px;
+    }
+
+    .drop-hint {
+      font-size: 0.82rem;
+      color: #b2bec3;
+    }
+
+    .file-name {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: #74b9ff;
+      min-height: 20px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: #0984e3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #0773c5; }
+    .btn:disabled { background: #636e72; cursor: not-allowed; }
+
+    .error {
+      margin-top: 20px;
+      padding: 12px 16px;
+      background: rgba(214, 48, 49, 0.15);
+      border: 1px solid #d63031;
+      border-radius: 6px;
+      color: #ff7675;
+      font-size: 0.88rem;
+    }
+
+    .features {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .feature {
+      background: #1e272e;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: #b2bec3;
+    }
+
+    .feature strong { color: #dfe6e9; display: block; margin-bottom: 2px; }
+
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Data Pipeline</h1>
+    <p class="subtitle">Upload a CSV or Excel file to clean, profile, and analyze your data.</p>
+
+    <form id="uploadForm" method="POST" action="/upload" enctype="multipart/form-data">
+      <div class="drop-zone" id="dropZone">
+        <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required />
+        <div class="drop-icon">&#128196;</div>
+        <div class="drop-label">Drop file here or click to browse</div>
+        <div class="drop-hint">.csv, .xlsx, or .xls &nbsp;&bull;&nbsp; any size</div>
+        <div class="file-name" id="fileName"></div>
+      </div>
+
+      <button class="btn" id="submitBtn" type="submit" disabled>
+        <span id="btnText">Select a file to continue</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+    </form>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <div class="features">
+      <div class="feature"><strong>Column Selection</strong>Choose which columns to keep</div>
+      <div class="feature"><strong>Auto Cleaning</strong>Deduplication &amp; null handling</div>
+      <div class="feature"><strong>Anomaly Detection</strong>Z-score &amp; rare value flags</div>
+      <div class="feature"><strong>HTML Report</strong>Charts &amp; column profiles</div>
+    </div>
+  </div>
+
+  <script>
+    const input    = document.getElementById("fileInput");
+    const dropZone = document.getElementById("dropZone");
+    const fileName = document.getElementById("fileName");
+    const btn      = document.getElementById("submitBtn");
+    const btnText  = document.getElementById("btnText");
+    const spinner  = document.getElementById("spinner");
+    const form     = document.getElementById("uploadForm");
+
+    function setFile(name) {
+      fileName.textContent = name ? `Selected: ${name}` : "";
+      btn.disabled = !name;
+      btnText.textContent = name ? "Analyze File \u2192" : "Select a file to continue";
+    }
+
+    input.addEventListener("change", () => {
+      setFile(input.files[0]?.name || "");
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("dragover");
+      const dt = e.dataTransfer;
+      if (dt.files.length) {
+        // Assign to the file input via DataTransfer
+        const transfer = new DataTransfer();
+        transfer.items.add(dt.files[0]);
+        input.files = transfer.files;
+        setFile(dt.files[0].name);
+      }
+    });
+
+    form.addEventListener("submit", () => {
+      btnText.style.display = "none";
+      spinner.style.display = "block";
+      btn.disabled = true;
+    });
+  </script>
+</body>
+</html>
