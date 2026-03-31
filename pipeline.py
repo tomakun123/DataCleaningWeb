@@ -700,11 +700,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       if (!th || fromIdx === -1) return;
       const rect = th.getBoundingClientRect();
       const dropBefore = e.clientX < rect.left + rect.width / 2;
-      // Move every cell in fromIdx column to the drop position
+      // Capture toIdx before any DOM changes so all rows use the same reference
+      const toIdx = Array.from(headerRow.children).indexOf(th);
       table.querySelectorAll('tr').forEach(row => {
         const cells = Array.from(row.children);
         const moving = cells[fromIdx];
-        const ref    = cells[Array.from(headerRow.children).indexOf(th)];
+        const ref    = cells[toIdx];
         if (!moving || !ref || moving === ref) return;
         dropBefore ? ref.before(moving) : ref.after(moving);
       });

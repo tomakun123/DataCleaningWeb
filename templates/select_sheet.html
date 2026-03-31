@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Select Sheet — Data Pipeline</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1e272e;
+      color: #dfe6e9;
+      min-height: 100vh;
+      padding: 32px 16px 48px;
+    }
+
+    .container { max-width: 620px; margin: 0 auto; }
+
+    .header { margin-bottom: 28px; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; }
+    .header .meta { color: #b2bec3; font-size: 0.88rem; margin-top: 4px; }
+
+    .card {
+      background: #2d3436;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #485460;
+    }
+
+    .sheet-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #1e272e;
+      border: 2px solid transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: border-color .15s, background .15s;
+    }
+
+    .sheet-option:last-child { margin-bottom: 0; }
+
+    .sheet-option:has(input:checked) {
+      border-color: #0984e3;
+      background: rgba(9,132,227,.08);
+    }
+
+    .sheet-option input[type="radio"] {
+      margin-top: 3px;
+      accent-color: #0984e3;
+      flex-shrink: 0;
+    }
+
+    .sheet-name { font-weight: 600; font-size: 0.95rem; }
+
+    .sheet-meta { color: #b2bec3; font-size: 0.82rem; margin-top: 3px; }
+
+    .sheet-cols {
+      color: #74b9ff;
+      font-size: 0.8rem;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .submit-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 4px;
+    }
+
+    .btn-primary {
+      padding: 13px 32px;
+      background: #0984e3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-primary:hover { background: #0773c5; }
+
+    .back-link {
+      color: #b2bec3;
+      font-size: 0.88rem;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #dfe6e9; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Select a Sheet</h1>
+    <p class="meta">{{ filename }} &nbsp;&bull;&nbsp; {{ previews | length }} sheet(s) found</p>
+  </div>
+
+  <form method="POST" action="/select-sheet">
+    <div class="card">
+      <h2>Which sheet contains your data?</h2>
+
+      {% for sheet in previews %}
+      <label class="sheet-option">
+        <input type="radio" name="sheet_name" value="{{ sheet.name }}"
+               {% if loop.first %}checked{% endif %} />
+        <div style="min-width:0">
+          <div class="sheet-name">{{ sheet.name }}</div>
+          <div class="sheet-meta">{{ sheet.cols }} column(s)</div>
+          {% if sheet.sample_cols %}
+          <div class="sheet-cols" title="{{ sheet.sample_cols | join(', ') }}">
+            {{ sheet.sample_cols | join(', ') }}{% if sheet.cols > 5 %}&hellip;{% endif %}
+          </div>
+          {% endif %}
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="btn-primary">Continue &#8594;</button>
+      <a href="/" class="back-link">&#8592; Back</a>
+    </div>
+  </form>
+
+</div>
+</body>
+</html>

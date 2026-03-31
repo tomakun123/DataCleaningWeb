@@ -107,16 +107,48 @@ def upload():
     save_path = UPLOAD_DIR / f"{file_id}{ext}"
     f.save(str(save_path))
 
+    session["file_id"] = file_id
+    session["file_ext"] = ext
+    session["filename"] = f.filename
+
+    # Excel: show sheet picker if multiple sheets, otherwise convert directly
+    if ext in (".xlsx", ".xls"):
+        try:
+            xl = pd.ExcelFile(str(save_path))
+            sheet_names = xl.sheet_names
+        except Exception as e:
+            return render_template("index.html", error=f"Could not read Excel file: {e}")
+
+        if len(sheet_names) == 1:
+            return _convert_sheet_and_configure(save_path, file_id, sheet_names[0], f.filename)
+
+        # Build previews (row × col) for each sheet
+        previews = []
+        for sheet in sheet_names:
+            try:
+                raw = xl.parse(sheet, header=None, nrows=20)
+                non_empty_counts = raw.apply(
+                    lambda row: row.dropna().astype(str).str.strip().ne("").sum(), axis=1
+                )
+                header_row = int(non_empty_counts.idxmax())
+                preview_df = xl.parse(sheet, header=header_row, nrows=3)
+                previews.append({
+                    "name": sheet,
+                    "cols": len(preview_df.columns),
+                    "sample_cols": list(preview_df.columns[:5]),
+                })
+            except Exception:
+                previews.append({"name": sheet, "cols": 0, "sample_cols": []})
+
+        return render_template("select_sheet.html", filename=f.filename, previews=previews)
+
+    # CSV: go straight to configure
     try:
         df = load_file(str(save_path))
         schema = build_schema(df)
         null_cols = [c for c in df.columns if df[c].isna().any()]
     except Exception as e:
         return render_template("index.html", error=f"Could not read file: {e}")
-
-    session["file_id"] = file_id
-    session["file_ext"] = ext
-    session["filename"] = f.filename
 
     return render_template(
         "configure.html",
@@ -126,6 +158,51 @@ def upload():
         has_nulls=bool(null_cols),
         null_cols=null_cols,
     )
+
+
+def _convert_sheet_and_configure(save_path, file_id, sheet_name, filename):
+    """Convert a specific Excel sheet to CSV and render the configure page."""
+    try:
+        xl = pd.ExcelFile(str(save_path))
+        raw = xl.parse(sheet_name, header=None, nrows=20)
+        non_empty_counts = raw.apply(
+            lambda row: row.dropna().astype(str).str.strip().ne("").sum(), axis=1
+        )
+        header_row = int(non_empty_counts.idxmax())
+        df = xl.parse(sheet_name, header=header_row)
+        csv_path = UPLOAD_DIR / f"{file_id}.csv"
+        df.to_csv(str(csv_path), index=False)
+        session["file_ext"] = ".csv"
+    except Exception as e:
+        return render_template("index.html", error=f"Could not read sheet: {e}")
+
+    schema = build_schema(df)
+    null_cols = [c for c in df.columns if df[c].isna().any()]
+    return render_template(
+        "configure.html",
+        schema=schema,
+        filename=filename,
+        row_count=f"{len(df):,}",
+        has_nulls=bool(null_cols),
+        null_cols=null_cols,
+    )
+
+
+@app.route("/select-sheet", methods=["POST"])
+def select_sheet():
+    sheet_name = request.form.get("sheet_name")
+    file_id = session.get("file_id")
+    file_ext = session.get("file_ext")
+    filename = session.get("filename", "data")
+
+    if not file_id or not sheet_name:
+        return redirect(url_for("index"))
+
+    save_path = UPLOAD_DIR / f"{file_id}{file_ext}"
+    if not save_path.exists():
+        return render_template("index.html", error="Session expired — please upload again.")
+
+    return _convert_sheet_and_configure(save_path, file_id, sheet_name, filename)
 
 
 @app.route("/run", methods=["POST"])
