@@ -268,26 +268,39 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
            background: #f5f6fa; color: #2d3436; }
-    header { background: #2d3436; color: white; padding: 24px 40px; }
-    header h1 { font-size: 1.6rem; }
-    header p  { color: #b2bec3; font-size: 0.9rem; margin-top: 4px; }
-    main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-    .card { background: white; border-radius: 8px; padding: 24px;
-            margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    header { background: #2d3436; color: white; padding: 14px 24px; }
+    header h1 { font-size: 1.4rem; }
+    header p  { color: #b2bec3; font-size: 0.85rem; margin-top: 2px; }
+    main { max-width: 1100px; margin: 0 auto; padding: 12px 16px; }
+    .card { background: white; border-radius: 8px; padding: 14px 18px;
+            margin-bottom: 18px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
     .card-header { display: flex; align-items: center; justify-content: space-between;
-                   margin-bottom: 16px; border-bottom: 2px solid #dfe6e9; padding-bottom: 8px; }
-    h2 { font-size: 1.1rem; }
-    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                 gap: 16px; }
-    .stat { background: #f5f6fa; border-radius: 6px; padding: 16px; text-align: center; }
-    .stat .val { font-size: 2rem; font-weight: 700; color: #0984e3; }
-    .stat .lbl { font-size: 0.8rem; color: #636e72; margin-top: 4px; }
+                   margin-bottom: 10px; border-bottom: 2px solid #dfe6e9; padding-bottom: 6px; }
+    h2 { font-size: 1rem; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+                 gap: 10px; }
+    .stat { background: #f5f6fa; border-radius: 6px; padding: 10px 12px; text-align: center; }
+    .stat .val { font-size: 1.6rem; font-weight: 700; color: #0984e3; }
+    .stat .lbl { font-size: 0.78rem; color: #636e72; margin-top: 2px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
     th { background: #f5f6fa; text-align: left; padding: 8px 12px;
-         border-bottom: 2px solid #dfe6e9; }
-    td { padding: 7px 12px; border-bottom: 1px solid #f0f0f0; }
+         border-bottom: 2px solid #dfe6e9; border-right: 1px solid #e8ecf0;
+         position: sticky; top: 44px; z-index: 2; }
+    th:last-child { border-right: none; }
+    td { padding: 3px 12px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0;
+         max-width: 360px; word-break: break-word; }
+    td:last-child { border-right: none; }
+    #anomalies-table th { padding: 8px 20px 8px 12px; min-width: 180px; white-space: nowrap; position: sticky; top: 44px; z-index: 2; }
+    #anomalies-table td { padding: 3px 20px 3px 12px; min-width: 180px; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #ffeaa7; }
+    .cell-full { display: none; }
+    .expand-btn {
+      background: none; border: none; cursor: pointer;
+      color: #0984e3; font-size: 0.78rem; font-weight: 600;
+      padding: 0 2px; white-space: nowrap;
+    }
+    .expand-btn:hover { text-decoration: underline; }
     .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
                   gap: 20px; }
     .chart-grid img { width: 100%; border-radius: 4px; }
@@ -384,8 +397,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     #anomalies-table th.col-drag-over-right { border-right: 3px solid #0984e3; }
     .col-reorder-hint {
       font-size: 0.75rem; color: #b2bec3;
-      margin-bottom: 8px; text-align: right;
+      margin-bottom: 4px; text-align: right;
     }
+    .top-scroll-bar { overflow-x: auto; overflow-y: hidden; height: 18px; margin: 4px 0 2px;
+                      position: sticky; top: 44px; z-index: 3; background: white; }
+    .top-scroll-bar .top-scroll-inner { height: 1px; }
   </style>
 </head>
 <body>
@@ -434,14 +450,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </thead>
       <tbody>
         {% for col in profiles %}
+        {% set top_s = col.top | string %}
+        {% set stats_s = col.stats | string %}
         <tr draggable="true">
           <td class="drag-col"><span class="drag-handle-icon">&#8597;</span></td>
           <td><strong>{{ col.name }}</strong></td>
           <td><span class="badge badge-{{ col.type }}">{{ col.type }}</span></td>
           <td>{{ col.non_null }}</td>
           <td>{{ col.unique }}</td>
-          <td>{{ col.stats }}</td>
-          <td>{{ col.top }}</td>
+          <td>{% if stats_s | length > 150 %}<span class="cell-short">{{ stats_s[:150] }}</span><span class="cell-full">{{ stats_s }}</span><button class="expand-btn" onclick="toggleCell(this)">&#8230; more</button>{% else %}{{ stats_s }}{% endif %}</td>
+          <td>{% if top_s | length > 150 %}<span class="cell-short">{{ top_s[:150] }}</span><span class="cell-full">{{ top_s }}</span><button class="expand-btn" onclick="toggleCell(this)">&#8230; more</button>{% else %}{{ top_s }}{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -491,12 +509,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     {% endif %}
     {% if anomaly_table %}
     <p class="col-reorder-hint">&#8596; Drag column headers left or right to reorder</p>
-    <div style="overflow-x:auto">
+    <div class="top-scroll-bar" id="anomalies-top-scroll"><div class="top-scroll-inner" id="anomalies-top-inner"></div></div>
+    <div style="overflow-x:auto" id="anomalies-scroll">
     <table id="anomalies-table">
       <thead><tr>{% for h in anomaly_headers %}<th draggable="true">{{ h }}</th>{% endfor %}</tr></thead>
       <tbody>
         {% for row in anomaly_table %}
-        <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+        <tr>{% for cell in row %}{% set s = cell | string %}
+          <td>{% if s | length > 100 %}<span class="cell-short">{{ s[:100] }}</span><span class="cell-full">{{ s }}</span><button class="expand-btn" onclick="toggleCell(this)">&#8230; more</button>{% else %}{{ s }}{% endif %}</td>
+        {% endfor %}</tr>
         {% endfor %}
       </tbody>
     </table>
@@ -522,6 +543,76 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 </main>
 <script>
+  // ── Cell expand/collapse ──────────────────────────────────────────────────
+  function toggleCell(btn) {
+    const td = btn.parentElement;
+    const short = td.querySelector('.cell-short');
+    const full  = td.querySelector('.cell-full');
+    const expanded = full.style.display === 'inline';
+    short.style.display = expanded ? 'inline' : 'none';
+    full.style.display  = expanded ? 'none'   : 'inline';
+    btn.textContent     = expanded ? '\u2026 more' : ' less';
+  }
+
+  // ── Sticky header for anomalies table (inside overflow-x container) ──────
+  (function() {
+    const table = document.getElementById('anomalies-table');
+    if (!table) return;
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+    const OFFSET = 64; // 44px toolbar + 18px scrollbar + 2px margin
+    function onScroll() {
+      const rect = table.getBoundingClientRect();
+      if (rect.top < OFFSET && rect.bottom > OFFSET + thead.offsetHeight) {
+        thead.style.transform = 'translateY(' + (OFFSET - rect.top) + 'px)';
+      } else {
+        thead.style.transform = '';
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+  })();
+
+  // ── Middle-mouse horizontal scroll on anomalies table ────────────────────
+  (function() {
+    const scroll = document.getElementById('anomalies-scroll');
+    if (!scroll) return;
+    let active = false, startX = 0, startLeft = 0;
+
+    scroll.addEventListener('mousedown', e => {
+      if (e.button !== 1) return;
+      e.preventDefault();
+      active = true;
+      startX = e.clientX;
+      startLeft = scroll.scrollLeft;
+      scroll.style.cursor = 'ew-resize';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!active) return;
+      scroll.scrollLeft = startLeft - (e.clientX - startX);
+    });
+    document.addEventListener('mouseup', e => {
+      if (e.button !== 1 || !active) return;
+      active = false;
+      scroll.style.cursor = '';
+    });
+  })();
+
+  // ── Top scrollbar sync ────────────────────────────────────────────────────
+  (function() {
+    const scroll = document.getElementById('anomalies-scroll');
+    const topBar = document.getElementById('anomalies-top-scroll');
+    const topInner = document.getElementById('anomalies-top-inner');
+    if (!scroll || !topBar || !topInner) return;
+    function syncInnerWidth() {
+      const table = scroll.querySelector('table');
+      topInner.style.width = (table ? table.offsetWidth : scroll.scrollWidth) + 'px';
+    }
+    syncInnerWidth();
+    window.addEventListener('resize', syncInnerWidth);
+    scroll.addEventListener('scroll', () => { topBar.scrollLeft = scroll.scrollLeft; });
+    topBar.addEventListener('scroll', () => { scroll.scrollLeft = topBar.scrollLeft; });
+  })();
+
   // ── Dropdown toggle ────────────────────────────────────────────────────────
   function toggleDropdown(id) {
     const dd = document.getElementById(id);
@@ -608,11 +699,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }).filter(Boolean);
   }
 
-  // Called by the toolbar's "Cleaned CSV" button
-  window._downloadCSV = function() {
+  // Called by the toolbar download buttons
+  window._downloadCSV = function(fmt) {
+    fmt = fmt || 'csv';
     const cols = getColumnOrder();
-    window.location.href = '/download/csv' +
-      (cols.length ? '?cols=' + encodeURIComponent(cols.join(',')) : '');
+    const colsParam = cols.length ? '?cols=' + encodeURIComponent(cols.join(',')) : '';
+    window.location.href = '/download/' + fmt + colsParam;
   };
 
   // ── Profiles table: drag rows to reorder ──────────────────────────────────

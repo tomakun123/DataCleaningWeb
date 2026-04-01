@@ -63,6 +63,9 @@
       font-size: 0.78rem;
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
     .col-table td { padding: 8px 10px; border-bottom: 1px solid #3d4852; }
@@ -251,6 +254,7 @@
         <button type="button" class="btn-sm" onclick="setAll(true)">Select All</button>
         <button type="button" class="btn-sm" onclick="setAll(false)">Deselect All</button>
       </div>
+      <div style="max-height:420px;overflow-y:auto;border-radius:6px;">
       <table class="col-table" id="colTable">
         <thead>
           <tr>
@@ -271,7 +275,7 @@
             </td>
             <td>
               <input type="checkbox" name="columns" value="{{ col.name }}"
-                     id="col_{{ loop.index }}" checked class="col-check" />
+                     id="col_{{ loop.index }}" class="col-check" />
             </td>
             <td>
               <label class="col-label" for="col_{{ loop.index }}">
@@ -296,6 +300,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- Null Handling -->

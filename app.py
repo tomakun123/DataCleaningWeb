@@ -122,20 +122,23 @@ def upload():
         if len(sheet_names) == 1:
             return _convert_sheet_and_configure(save_path, file_id, sheet_names[0], f.filename)
 
-        # Build previews (row × col) for each sheet
+        # Build previews from a single read per sheet
         previews = []
         for sheet in sheet_names:
             try:
                 raw = xl.parse(sheet, header=None, nrows=20)
+                if raw.empty:
+                    previews.append({"name": sheet, "cols": 0, "sample_cols": []})
+                    continue
                 non_empty_counts = raw.apply(
                     lambda row: row.dropna().astype(str).str.strip().ne("").sum(), axis=1
                 )
                 header_row = int(non_empty_counts.idxmax())
-                preview_df = xl.parse(sheet, header=header_row, nrows=3)
+                col_names = [str(v) for v in raw.iloc[header_row].tolist() if str(v).strip() not in ("", "nan")]
                 previews.append({
                     "name": sheet,
-                    "cols": len(preview_df.columns),
-                    "sample_cols": list(preview_df.columns[:5]),
+                    "cols": len(col_names),
+                    "sample_cols": col_names[:5],
                 })
             except Exception:
                 previews.append({"name": sheet, "cols": 0, "sample_cols": []})
@@ -291,12 +294,15 @@ def report():
     # Inject a sticky toolbar for navigation and downloads
     toolbar = """
 <div style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#2d3436;
-            padding:10px 24px;display:flex;gap:16px;align-items:center;
+            padding:10px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
             box-shadow:0 2px 8px rgba(0,0,0,.4)">
   <span style="color:#b2bec3;font-size:0.85rem;flex:1">Data Pipeline Report</span>
   <a href="/" style="color:#74b9ff;text-decoration:none;font-size:0.85rem">&#8592; New Upload</a>
-  <a href="/download/report" style="color:#74b9ff;text-decoration:none;font-size:0.85rem">&#8659; HTML Report</a>
-  <a href="#" onclick="window._downloadCSV ? window._downloadCSV() : window.location.href='/download/csv'; return false;" style="color:#55efc4;text-decoration:none;font-size:0.85rem">&#8659; Cleaned CSV</a>
+  <a href="/download/report" style="color:#74b9ff;text-decoration:none;font-size:0.85rem">&#8659; HTML</a>
+  <a href="#" onclick="window._downloadCSV ? window._downloadCSV('csv') : window.location.href='/download/csv'; return false;" style="color:#55efc4;text-decoration:none;font-size:0.85rem">&#8659; CSV</a>
+  <a href="#" onclick="window._downloadCSV ? window._downloadCSV('xlsx') : window.location.href='/download/xlsx'; return false;" style="color:#55efc4;text-decoration:none;font-size:0.85rem">&#8659; XLSX</a>
+  <a href="#" onclick="window._downloadCSV ? window._downloadCSV('xls') : window.location.href='/download/xls'; return false;" style="color:#55efc4;text-decoration:none;font-size:0.85rem">&#8659; XLS</a>
+  <a href="#" onclick="window.print(); return false;" style="color:#fdcb6e;text-decoration:none;font-size:0.85rem">&#8659; PDF</a>
 </div>
 <div style="height:44px"></div>
 """
@@ -343,6 +349,55 @@ def download_csv():
     return send_from_directory(
         str(REPORT_DIR), f"{report_id}_cleaned.csv",
         as_attachment=True, download_name=f"cleaned_{stem}.csv"
+    )
+
+
+def _load_csv_with_col_order(csv_path, cols_param):
+    """Read cleaned CSV, optionally reordering/filtering to cols_param."""
+    df = pd.read_csv(str(csv_path))
+    if cols_param:
+        requested = [c.strip() for c in cols_param.split(",") if c.strip()]
+        valid = [c for c in requested if c in df.columns]
+        if valid:
+            df = df[valid]
+    return df
+
+
+@app.route("/download/xlsx")
+def download_xlsx():
+    report_id = session.get("report_id")
+    if not report_id:
+        abort(404)
+    stem = Path(session.get("filename", "data")).stem
+    csv_path = REPORT_DIR / f"{report_id}_cleaned.csv"
+    df = _load_csv_with_col_order(csv_path, request.args.get("cols", "").strip())
+    buf = io.BytesIO()
+    df.to_excel(buf, index=False, engine="openpyxl")
+    buf.seek(0)
+    from flask import Response
+    return Response(
+        buf.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="cleaned_{stem}.xlsx"'},
+    )
+
+
+@app.route("/download/xls")
+def download_xls():
+    report_id = session.get("report_id")
+    if not report_id:
+        abort(404)
+    stem = Path(session.get("filename", "data")).stem
+    csv_path = REPORT_DIR / f"{report_id}_cleaned.csv"
+    df = _load_csv_with_col_order(csv_path, request.args.get("cols", "").strip())
+    buf = io.BytesIO()
+    df.to_excel(buf, index=False, engine="xlwt")
+    buf.seek(0)
+    from flask import Response
+    return Response(
+        buf.getvalue(),
+        mimetype="application/vnd.ms-excel",
+        headers={"Content-Disposition": f'attachment; filename="cleaned_{stem}.xls"'},
     )
 
 
